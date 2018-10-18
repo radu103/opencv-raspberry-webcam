@@ -32,27 +32,28 @@ setInterval(function(){
 				
 				let cropName = folder + name + "_c" + i + '.jpeg';
 				croppedImg.save(cropName);
+				console.log("Saved section image " + i + " : ", cropName);
 				
 				var im_canny = croppedImg.copy();
 
 				var lowThresh = 0;
 				var highThresh = 100;
-				var nIters = 1;
+				var nIters = 2;
 
 				im_canny.canny(lowThresh, highThresh);
 				im_canny.dilate(nIters);
 			  
 				var contours = im_canny.findContours();
 
-				var size = contours.size();
-				var cars = Math.round(size / 4);
+				var cars = Math.ceil(contours.size() / 2);
 				
 				console.log("Cars " + i + " : ", cars);
 				
-				var fileName2 = folder + name + "_" + i + '_canny.jpeg';
-				im_canny.save(fileName2);
+				//var fileName2 = folder + name + "_" + i + '_canny.jpeg';
+				//im_canny.save(fileName2);
+				//console.log("Saved image : ", fileName2);
 			}
 		});
 	}); 
 	
-}, 10000);
+}, 30000);
