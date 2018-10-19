@@ -13,6 +13,9 @@ setInterval(function(){
 	exec('fswebcam -r 1920x1080 --no-banner ' +  fileName).then(function(res){
 		cv.readImage(fileName, function(err, im){
 			
+			//im.gaussianBlur([5, 5]);
+			//im.convertGrayscale();
+			
 			if(err) {
 				console.log(err);
 			}
@@ -23,11 +26,21 @@ setInterval(function(){
 			if (width < 1 || height < 1) 
 				throw new Error('Image has no size');
 
-			var sectorWidth = Math.round(width / 6);
+			var offset = 200;
+			var offset2 = 80;
+			var sectorWidth = 260;
 			
 			for(var i = 1; i <= 6; i++)
 			{
-				let x1 = (i-1) * sectorWidth;
+				let x1 = 0;
+				
+				if(i <= 3){
+					x1 = (i-1) * sectorWidth + offset;
+				}
+				else{
+					x1 = width - offset2 - sectorWidth - (6 - i) * sectorWidth;
+				}	
+				
 				let croppedImg = im.crop(x1, 0, sectorWidth - 1, height);
 				
 				let cropName = folder + name + "_c" + i + '.jpeg';
@@ -36,7 +49,7 @@ setInterval(function(){
 				
 				var im_canny = croppedImg.copy();
 
-				var lowThresh = 0;
+				var lowThresh = 50;
 				var highThresh = 100;
 				var nIters = 2;
 
@@ -45,7 +58,8 @@ setInterval(function(){
 			  
 				var contours = im_canny.findContours();
 
-				var cars = Math.ceil(contours.size() / 2);
+				var cars = contours.size();
+				cars = Math.round(cars / 2.6);
 				
 				console.log("Cars " + i + " : ", cars);
 				
