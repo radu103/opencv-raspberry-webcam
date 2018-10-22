@@ -1,5 +1,6 @@
 var exec = require('executive');
 var cv = require('opencv');
+var randomInt = require('random-int');
 
 var folder = '/home/pi/webcam/images/';
 
@@ -11,10 +12,8 @@ setInterval(function(){
 	console.log(fileName);
 
 	exec('fswebcam -r 1920x1080 --no-banner ' +  fileName).then(function(res){
+		
 		cv.readImage(fileName, function(err, im){
-			
-			//im.gaussianBlur([5, 5]);
-			//im.convertGrayscale();
 			
 			if(err) {
 				console.log(err);
@@ -46,28 +45,103 @@ setInterval(function(){
 				let cropName = folder + name + "_c" + i + '.jpeg';
 				croppedImg.save(cropName);
 				console.log("Saved section image " + i + " : ", cropName);
+
+				let cropNameBw = folder + name + "_c" + i + '_bw.jpeg';
+				var limit = getAverageThreshold(croppedImg, 100);
+				let bwImg = getBlackAndWhiteMask(croppedImg, limit);
+				bwImg.save(folder + cropNameBw);
+				console.log("Saved section BW image " + i + " : ", cropNameBw);
 				
-				var im_canny = croppedImg.copy();
+				var minCarArea =  90 * 90; // min car size
+				var maxCarArea = width * height / 16;
 
-				var lowThresh = 50;
-				var highThresh = 100;
-				var nIters = 2;
+				var contours = bwImg.findContours();
 
-				im_canny.canny(lowThresh, highThresh);
-				im_canny.dilate(nIters);
-			  
-				var contours = im_canny.findContours();
+				var cars = 0;
 
-				var cars = contours.size();
-				cars = Math.round(cars / 2.6);
+				for (var j = 0; j < contours.size(); j++) {
+
+					var area = contours.area(j);
+					//console.log("Area " + j + " : " + area);
+
+					if (area < minCarArea || area > maxCarArea) continue;
+
+					cars += 1;
+				}
 				
 				console.log("Cars " + i + " : ", cars);
-				
-				//var fileName2 = folder + name + "_" + i + '_canny.jpeg';
-				//im_canny.save(fileName2);
-				//console.log("Saved image : ", fileName2);
 			}
 		});
 	}); 
 	
 }, 30000);
+
+function getAverageThreshold(cvImg, noPoints){
+
+    var threshold = 0;
+
+    var data = cvImg.getData();
+    var height = cvImg.height();
+    var width = cvImg.width();
+
+    var sum = 0;
+    var cnt = 0;
+
+    for(var i = 0; i < noPoints; i++){
+        
+        var x = randomInt(width);
+        var y = randomInt(height);
+
+        var pos = 3 * (width * x + y);
+        var val = data[pos] + data[pos + 1] + data[pos + 2];
+        //console.log(val);
+
+        if(!isNaN(val)){
+            sum += val;
+            cnt += 1;
+        }
+    }
+
+    threshold = Math.round(sum / cnt);
+
+    return threshold;
+}
+
+function getBlackAndWhiteMask(cvImg, limit){
+    
+    // B, G, R
+    var WHITE = [255, 255, 255];
+
+    var width = cvImg.width();
+    var height = cvImg.height();
+
+    var bwImg = new cv.Matrix(height, width, cv.Constants.CV_8UC1, WHITE);
+    
+    var oldData = cvImg.getData();
+    var data = bwImg.getData();
+
+    for(var x = 0; x < 3 * width; x++){
+        for(var y = 0; y < 3 * height; y++){
+            
+            var pos = 3 * (width * x + y);
+            var val = oldData[pos] + oldData[pos + 1] + oldData[pos + 2];
+            
+            var newPos = width * x + y;
+
+            if(val < limit){
+                data[newPos] = 0;
+                data[newPos + 1] = 0;
+                data[newPos + 2] = 0;
+            }
+            else{
+                data[newPos] = 255;
+                data[newPos + 1] = 255;
+                data[newPos + 2] = 255;
+            }
+        }
+    }
+
+    bwImg.put(data);
+
+    return bwImg;
+}
